@@ -2,17 +2,18 @@
 #include <ESP8266WebServer.h>
 #include <DNSServer.h>
 
-const char* ssid = "MyESP8266AP";
-const char* password = "mypassword";
+const char* ssid = "ESP-LED-AP";
+const char* password = "12345678";
+
+const char* sta_ssid = "YourSSID";        // Your home/room Wi-Fi SSID
+const char* sta_password = "YourPassword"; // Your home/room Wi-Fi password
 
 ESP8266WebServer server(80);
 DNSServer dnsServer;
 
-const int ledPin = 2; // D4
-const int ledPin2 = 5; // D1
-const int ledPin3 = 4; // D2
-
-IPAddress localIP(192, 168, 4, 1);
+const int led1 = 2; // GPIO2 (D4)
+const int led2 = 5; // GPIO5 (D1)
+const int led3 = 4; // GPIO4 (D2)
 
 void handleRoot() {
   String html = R"rawliteral(
@@ -27,8 +28,7 @@ void handleRoot() {
       </style>
       <script>
         function toggleLED(led, action) {
-          fetch(`/${led}/${action}`)
-            .then(() => updateStatus());
+          fetch(`/${led}/${action}`).then(() => updateStatus());
         }
 
         function updateStatus() {
@@ -46,7 +46,7 @@ void handleRoot() {
       </script>
     </head>
     <body>
-      <h1>ESP8266 LED Control (AJAX)</h1>
+      <h1>ESP8266 LED Control (Dual Mode)</h1>
 
       <div>
         <p>LED 1 (GPIO2) is: <span class="status" id="status1">...</span></p>
@@ -72,56 +72,70 @@ void handleRoot() {
   server.send(200, "text/html", html);
 }
 
-// LED Control Endpoints
 void handleLED(const int pin, bool state) {
   digitalWrite(pin, state ? LOW : HIGH);
   server.send(200, "text/plain", "OK");
 }
 
-// JSON Status Endpoint
 void handleStatus() {
   String json = "{";
-  json += "\"led1\":\"" + String((digitalRead(ledPin) == LOW) ? "ON" : "OFF") + "\",";
-  json += "\"led2\":\"" + String((digitalRead(ledPin2) == LOW) ? "ON" : "OFF") + "\",";
-  json += "\"led3\":\"" + String((digitalRead(ledPin3) == LOW) ? "ON" : "OFF") + "\"";
+  json += "\"led1\":\"" + String((digitalRead(led1) == LOW) ? "ON" : "OFF") + "\",";
+  json += "\"led2\":\"" + String((digitalRead(led2) == LOW) ? "ON" : "OFF") + "\",";
+  json += "\"led3\":\"" + String((digitalRead(led3) == LOW) ? "ON" : "OFF") + "\"";
   json += "}";
   server.send(200, "application/json", json);
 }
 
 void setup() {
-  pinMode(ledPin, OUTPUT);
-  pinMode(ledPin2, OUTPUT);
-  pinMode(ledPin3, OUTPUT);
-
-  digitalWrite(ledPin, HIGH);
-  digitalWrite(ledPin2, HIGH);
-  digitalWrite(ledPin3, HIGH);
-
   Serial.begin(115200);
 
+  // Set Wi-Fi mode to AP + STA
+  WiFi.mode(WIFI_AP_STA);
+
+  // Start AP mode
   WiFi.softAP(ssid, password);
-  dnsServer.start(53, "ctrl.me", localIP);
+  Serial.print("AP IP: ");
+  Serial.println(WiFi.softAPIP());
 
+  // Try connecting to home Wi-Fi
+  WiFi.begin(sta_ssid, sta_password);
+  Serial.print("Connecting to ");
+  Serial.print(sta_ssid);
+  for (int i = 0; i < 20 && WiFi.status() != WL_CONNECTED; i++) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nConnected to home Wi-Fi");
+    Serial.print("STA IP: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("\nFailed to connect to home Wi-Fi.");
+  }
+
+  pinMode(led1, OUTPUT);
+  pinMode(led2, OUTPUT);
+  pinMode(led3, OUTPUT);
+
+  digitalWrite(led1, HIGH);
+  digitalWrite(led2, HIGH);
+  digitalWrite(led3, HIGH);
+
+  // Routes
   server.on("/", handleRoot);
-
-  server.on("/led1/on", []() { handleLED(ledPin, true); });
-  server.on("/led1/off", []() { handleLED(ledPin, false); });
-  server.on("/led2/on", []() { handleLED(ledPin2, true); });
-  server.on("/led2/off", []() { handleLED(ledPin2, false); });
-  server.on("/led3/on", []() { handleLED(ledPin3, true); });
-  server.on("/led3/off", []() { handleLED(ledPin3, false); });
-
+  server.on("/led1/on", []() { handleLED(led1, true); });
+  server.on("/led1/off", []() { handleLED(led1, false); });
+  server.on("/led2/on", []() { handleLED(led2, true); });
+  server.on("/led2/off", []() { handleLED(led2, false); });
+  server.on("/led3/on", []() { handleLED(led3, true); });
+  server.on("/led3/off", []() { handleLED(led3, false); });
   server.on("/status", handleStatus);
-
-  server.onNotFound([]() {
-    server.send(404, "text/plain", "404: Not Found");
-  });
 
   server.begin();
   Serial.println("HTTP server started");
 }
 
 void loop() {
-  dnsServer.processNextRequest();
   server.handleClient();
 }

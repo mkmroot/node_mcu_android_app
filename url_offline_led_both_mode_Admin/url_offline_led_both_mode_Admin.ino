@@ -5,7 +5,7 @@
 #include <WiFiManager.h>          // https://github.com/tzapu/WiFiManager
 
 // Wi-Fi credentials for the Access Point
-const char* ssid_ap = "ESP-LED-AP";
+const char* ssid_ap = "CTRLDevice-01";
 const char* password_ap = "12345678";
 IPAddress apIP(192, 168, 4, 1);
 
@@ -225,7 +225,7 @@ void setup() {
   // Reset saved settings if needed for testing
   // wifiManager.resetSettings();
 
-  if (wifiManager.autoConnect("ESP-LED-Config")) {
+  if (wifiManager.autoConnect("IOTconfig-01")) {
     Serial.println("Connected to Wi-Fi!");
     Serial.print("STA IP address: ");
     Serial.println(WiFi.localIP());

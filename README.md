@@ -7,6 +7,7 @@ Create the android app by mit
             http://192.168.4.1   --> scan wifi, give credential and connect  
             Restart the nodeMCU  --> connnect phone wifi to ESP-LED-AP       
             http://192.168.4.1/admin or http://ctrl.me/admin   --> get the IP of NodeMCU
+
 ir_receiver-admin3_nodemcu.ino = extra feature we can edit the hexcode accoding to the Ledpin on http://ctrl.me/ir-admin
     
      
